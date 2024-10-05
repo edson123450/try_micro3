@@ -6,7 +6,7 @@ import requests
 app = Flask(__name__)
 
 # Conexión a MongoDB
-client = MongoClient("mongodb://edson123450:utec@98.83.69.254:8007/servicio_opiniones")
+client = MongoClient("mongodb://98.83.69.254:27017")
 db = client["servicio_opiniones"]
 reviews_collection = db["reviews"]
 
