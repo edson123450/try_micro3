@@ -1,17 +1,36 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
 from pymongo import MongoClient
 import logging as log
 import requests
 
 app = Flask(__name__)
 
-# Conexión a MongoDB
-client = MongoClient("mongodb://98.83.69.254:27017")
-db = client["servicio_opiniones"]
-reviews_collection = db["reviews"]
+# Clase MongoAPI para manejar la conexión y las operaciones sobre MongoDB
+class MongoAPI:
+    def __init__(self, data):
+        log.basicConfig(level=log.DEBUG, format='%(asctime)s %(levelname)s:\n%(message)s\n')
+        self.client = MongoClient("mongodb://98.83.69.254:27017")  # Conexión MongoDB
+        database = data['database']
+        collection = data['collection']
+        cursor = self.client[database]
+        self.collection = cursor[collection]
+        self.data = data
 
-# Logger
-log.basicConfig(level=log.DEBUG, format='%(asctime)s %(levelname)s:\n%(message)s\n')
+    def find_reviews_by_book_id(self, book_id):
+        log.info('Buscando reviews por bookId')
+        reviews = list(self.collection.find({"bookId": book_id}))
+        return reviews
+
+    def find_reviews_by_rating(self, rating):
+        log.info('Buscando reviews por rating')
+        reviews = list(self.collection.find({"rating": rating}))
+        return reviews
+
+    def insert_review(self, review_data):
+        log.info('Guardando una nueva review')
+        response = self.collection.insert_one(review_data)
+        output = {'Status': 'Successfully Inserted', 'Document_ID': str(response.inserted_id)}
+        return output
 
 # DTO para manejar respuestas de microservicio2 (usuario)
 class UserDTO:
@@ -25,8 +44,10 @@ class BookDetailsDTO:
         self.title = title
         self.author_name = author_name
 
+# Ruta para obtener reviews por título y autor
 @app.route('/reviews/by-book-author', methods=['GET'])
 def get_reviews_by_book_and_author():
+    data = request.json
     title = request.args.get('title')
     author_name = request.args.get('authorName')
 
@@ -35,8 +56,11 @@ def get_reviews_by_book_and_author():
     book_response = requests.get(book_service_url)
     book_id = book_response.json()
 
+    # Crear instancia de MongoAPI para operar en la base de datos y colección proporcionadas
+    mongo_api = MongoAPI(data)
+
     # Buscar reviews en MongoDB por book_id
-    reviews = list(reviews_collection.find({"bookId": book_id}))
+    reviews = mongo_api.find_reviews_by_book_id(book_id)
 
     # Para cada review, llamar al microservicio 2 para obtener name y email
     result = []
@@ -56,13 +80,17 @@ def get_reviews_by_book_and_author():
 
     return jsonify(result), 200
 
-
+# Ruta para obtener libros por rating
 @app.route('/reviews/by-rating', methods=['GET'])
 def get_books_by_rating():
+    data = request.json
     rating = int(request.args.get('rating'))
 
+    # Crear instancia de MongoAPI para operar en la base de datos y colección proporcionadas
+    mongo_api = MongoAPI(data)
+
     # Buscar reviews en MongoDB por rating
-    reviews = list(reviews_collection.find({"rating": rating}))
+    reviews = mongo_api.find_reviews_by_rating(rating)
 
     # Llamada al microservicio 1 para obtener el título y nombre del autor por cada book_id
     result = []
@@ -80,23 +108,25 @@ def get_books_by_rating():
 
     return jsonify(result), 200
 
-
+# Ruta para guardar una nueva review
 @app.route('/reviews/new', methods=['POST'])
 def add_new_review():
-    review_data = request.get_json()
+    data = request.json
 
-    # Guardar nueva review en MongoDB
+    # Crear instancia de MongoAPI para operar en la base de datos y colección proporcionadas
+    mongo_api = MongoAPI(data)
+
+    # Extraer y guardar la nueva review en MongoDB
     new_review = {
-        "bookId": review_data.get("bookId"),
-        "authorId": review_data.get("authorId"),
-        "userId": review_data.get("userId"),
-        "rating": review_data.get("rating"),
-        "comment": review_data.get("comment")
+        "bookId": data.get("bookId"),
+        "authorId": data.get("authorId"),
+        "userId": data.get("userId"),
+        "rating": data.get("rating"),
+        "comment": data.get("comment")
     }
 
-    reviews_collection.insert_one(new_review)
-    return jsonify({"message": "Review saved successfully"}), 201
-
+    response = mongo_api.insert_review(new_review)
+    return jsonify(response), 201
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8003, debug=True)
