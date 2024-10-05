@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, jsonify, Response, json
 from pymongo import MongoClient
 import logging as log
 import requests
@@ -17,8 +17,8 @@ class MongoAPI:
         self.data = data
 
     def find_reviews_by_book_id(self, book_id):
-        log.info('Buscando reviews por bookId')
-        reviews = list(self.collection.find({"bookId": book_id}))
+        log.info('Buscando reviews por book_id')
+        reviews = list(self.collection.find({"book_id": book_id}))
         return reviews
 
     def find_reviews_by_rating(self, rating):
@@ -44,6 +44,12 @@ class BookDetailsDTO:
         self.title = title
         self.author_name = author_name
 
+@app.route('/')
+def base():
+    return Response(response=json.dumps({"Status": "UP"}),
+                    status=200,
+                    mimetype='application/json')
+
 # Ruta para obtener reviews por título y autor
 @app.route('/reviews/by-book-author', methods=['GET'])
 def get_reviews_by_book_and_author():
@@ -65,7 +71,7 @@ def get_reviews_by_book_and_author():
     # Para cada review, llamar al microservicio 2 para obtener name y email
     result = []
     for review in reviews:
-        user_service_url = f"http://api-microservicio2_c:8002/users/{review['userId']}"
+        user_service_url = f"http://api-microservicio2_c:8002/users/{review['user_id']}"
         user_response = requests.get(user_service_url)
         user_data = user_response.json()
 
@@ -95,7 +101,7 @@ def get_books_by_rating():
     # Llamada al microservicio 1 para obtener el título y nombre del autor por cada book_id
     result = []
     for review in reviews:
-        book_service_url = f"http://api-microservicio1_c:8001/books/{review['bookId']}/details"
+        book_service_url = f"http://api-microservicio1_c:8001/books/{review['book_id']}/details"
         book_response = requests.get(book_service_url)
         book_data = book_response.json()
 
@@ -118,9 +124,9 @@ def add_new_review():
 
     # Extraer y guardar la nueva review en MongoDB
     new_review = {
-        "bookId": data.get("bookId"),
-        "authorId": data.get("authorId"),
-        "userId": data.get("userId"),
+        "book_id": data.get("book_id"),
+        "author_id": data.get("author_id"),
+        "user_id": data.get("user_id"),
         "rating": data.get("rating"),
         "comment": data.get("comment")
     }
