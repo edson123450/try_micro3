@@ -131,7 +131,10 @@ def get_all_reviews():
     reviews = mongo_api.find_all_reviews()
 
     # Convertir los resultados en JSON y devolverlos
-    return jsonify(reviews), 200
+    #return jsonify(reviews), 200
+    return Response(response=json.dumps(reviews),
+                    status=200,
+                    mimetype='application/json')
 
 # Ruta para guardar una nueva review
 @app.route('/reviews/new', methods=['POST'])
