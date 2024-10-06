@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify, Response, json
 from pymongo import MongoClient
 import logging as log
 import requests
+from bson import ObjectId
 
 app = Flask(__name__)
 
@@ -26,9 +27,20 @@ class MongoAPI:
         reviews = list(self.collection.find({"rating": rating}))
         return reviews
 
+    #def find_all_reviews(self):
+    #    log.info('Buscando todos los reviews')
+    #    reviews = list(self.collection.find())
+    #    return reviews
+
     def find_all_reviews(self):
         log.info('Buscando todos los reviews')
         reviews = list(self.collection.find())
+
+        # Convertir el ObjectId a string
+        for review in reviews:
+            if '_id' in review:
+                review['_id'] = str(review['_id'])
+
         return reviews
 
     def insert_review(self, review_data):
@@ -120,6 +132,23 @@ def get_books_by_rating():
     return jsonify(result), 200
 
 # Nueva ruta para obtener todos los reviews
+#@app.route('/reviews/all', methods=['GET'])
+#def get_all_reviews():
+#    data = request.json
+
+    # Crear instancia de MongoAPI para operar en la base de datos y colección proporcionadas
+#    mongo_api = MongoAPI(data)
+
+    # Buscar todos los reviews en MongoDB
+#    reviews = mongo_api.find_all_reviews()
+
+    # Convertir los resultados en JSON y devolverlos
+    #return jsonify(reviews), 200
+#    return Response(response=json.dumps(reviews),
+#                    status=200,
+#                    mimetype='application/json')
+
+
 @app.route('/reviews/all', methods=['GET'])
 def get_all_reviews():
     data = request.json
@@ -131,10 +160,7 @@ def get_all_reviews():
     reviews = mongo_api.find_all_reviews()
 
     # Convertir los resultados en JSON y devolverlos
-    #return jsonify(reviews), 200
-    return Response(response=json.dumps(reviews),
-                    status=200,
-                    mimetype='application/json')
+    return jsonify(reviews), 200
 
 # Ruta para guardar una nueva review
 @app.route('/reviews/new', methods=['POST'])
