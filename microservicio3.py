@@ -26,6 +26,11 @@ class MongoAPI:
         reviews = list(self.collection.find({"rating": rating}))
         return reviews
 
+    def find_all_reviews(self):
+        log.info('Buscando todos los reviews')
+        reviews = list(self.collection.find())
+        return reviews
+
     def insert_review(self, review_data):
         log.info('Guardando una nueva review')
         response = self.collection.insert_one(review_data)
@@ -113,6 +118,20 @@ def get_books_by_rating():
         result.append(book_info)
 
     return jsonify(result), 200
+
+# Nueva ruta para obtener todos los reviews
+@app.route('/reviews/all', methods=['GET'])
+def get_all_reviews():
+    data = request.json
+
+    # Crear instancia de MongoAPI para operar en la base de datos y colección proporcionadas
+    mongo_api = MongoAPI(data)
+
+    # Buscar todos los reviews en MongoDB
+    reviews = mongo_api.find_all_reviews()
+
+    # Convertir los resultados en JSON y devolverlos
+    return jsonify(reviews), 200
 
 # Ruta para guardar una nueva review
 @app.route('/reviews/new', methods=['POST'])
