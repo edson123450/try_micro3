@@ -20,27 +20,22 @@ class MongoAPI:
     def find_reviews_by_book_id(self, book_id):
         log.info('Buscando reviews por book_id')
         reviews = list(self.collection.find({"book_id": book_id}))
+        for review in reviews:
+            review['_id'] = str(review['_id'])  # Convertir ObjectId a string
         return reviews
 
     def find_reviews_by_rating(self, rating):
         log.info('Buscando reviews por rating')
         reviews = list(self.collection.find({"rating": rating}))
+        for review in reviews:
+            review['_id'] = str(review['_id'])  # Convertir ObjectId a string
         return reviews
-
-    #def find_all_reviews(self):
-    #    log.info('Buscando todos los reviews')
-    #    reviews = list(self.collection.find())
-    #    return reviews
 
     def find_all_reviews(self):
         log.info('Buscando todos los reviews')
         reviews = list(self.collection.find())
-
-        # Convertir el ObjectId a string
         for review in reviews:
-            if '_id' in review:
-                review['_id'] = str(review['_id'])
-
+            review['_id'] = str(review['_id'])  # Convertir ObjectId a string
         return reviews
 
     def insert_review(self, review_data):
@@ -77,7 +72,10 @@ def get_reviews_by_book_and_author():
     # Llamada al microservicio 1 para obtener el book_id
     book_service_url = f"http://api-microservicio1_c:8001/books/get_book_id?title={title}&author_name={author_name}"
     book_response = requests.get(book_service_url)
-    book_id = book_response.json()
+    book_id = book_response.json().get('book_id')
+
+    if not book_id:
+        return jsonify({"error": "Book not found"}), 404
 
     # Crear instancia de MongoAPI para operar en la base de datos y colección proporcionadas
     mongo_api = MongoAPI(data)
@@ -94,8 +92,8 @@ def get_reviews_by_book_and_author():
 
         # Crear la lista con name, email, rating y comment
         review_info = [
-            user_data['name'],
-            user_data['email'],
+            user_data.get('name', 'Unknown'),
+            user_data.get('email', 'Unknown'),
             str(review['rating']),
             review['comment']
         ]
@@ -122,33 +120,19 @@ def get_books_by_rating():
         book_response = requests.get(book_service_url)
         book_data = book_response.json()
 
-        # Crear la lista con title y author_name
-        book_info = [
-            book_data['title'],
-            book_data['authorName']
-        ]
-        result.append(book_info)
+        if book_data.get('title') and book_data.get('author_name'):
+            # Crear la lista con title y author_name
+            book_info = [
+                book_data['title'],
+                book_data['author_name']
+            ]
+            result.append(book_info)
+        else:
+            result.append({"error": "Book or author details not found"})
 
     return jsonify(result), 200
 
-# Nueva ruta para obtener todos los reviews
-#@app.route('/reviews/all', methods=['GET'])
-#def get_all_reviews():
-#    data = request.json
-
-    # Crear instancia de MongoAPI para operar en la base de datos y colección proporcionadas
-#    mongo_api = MongoAPI(data)
-
-    # Buscar todos los reviews en MongoDB
-#    reviews = mongo_api.find_all_reviews()
-
-    # Convertir los resultados en JSON y devolverlos
-    #return jsonify(reviews), 200
-#    return Response(response=json.dumps(reviews),
-#                    status=200,
-#                    mimetype='application/json')
-
-
+# Ruta para obtener todos los reviews
 @app.route('/reviews/all', methods=['GET'])
 def get_all_reviews():
     data = request.json
