@@ -9,7 +9,7 @@ app = Flask(__name__)
 class MongoAPI:
     def __init__(self, data):
         log.basicConfig(level=log.DEBUG, format='%(asctime)s %(levelname)s:\n%(message)s\n')
-        self.client = MongoClient("mongodb://98.83.69.254:27017")  # Conexión MongoDB
+        self.client = MongoClient("mongodb://98.83.69.254:8007")  # Conexión MongoDB
         database = data['database']
         collection = data['collection']
         cursor = self.client[database]
